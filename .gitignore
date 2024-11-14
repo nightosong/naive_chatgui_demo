@@ -1,0 +1,5 @@
+.venv
+configs/schema.yaml
+__pycache__
+*/__pycache__
+workers/*

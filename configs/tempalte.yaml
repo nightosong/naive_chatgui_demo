@@ -1,0 +1,131 @@
+status:
+  debug_enable: true
+  langfuse_config: []
+chat_models:
+  - model_type: azure
+    model_args:
+      api_key: "__APIKEY__"
+      api_version: "2024-08-01-preview"
+      azure_endpoint: "https://azure.example.com/"
+    model_list:
+      - model_show: gpt-4o
+        model_ready: true
+        extra_args:
+          azure_deployment: gpt-4o
+      - model_show: gpt-4o-0806
+        model_ready: true
+        extra_args:
+          azure_deployment: gpt-4o-0806
+  - model_type: ollama
+    model_args:
+      base_url: "http://ollama.example.com"
+      additional_kwargs:
+        repeat_penalty: 1.05
+    invoke_args:
+      keep_alive: -1
+    model_list:
+      - model_show: qwen2.5-72b
+        model_ready: true
+        extra_args:
+          model: qwen2.5:72b
+embeddings:
+  - model_type: azure
+    model_args:
+      api_key: "__APIKEY__"
+      api_version: "2023-05-15"
+      azure_endpoint: "https://azure.example.com/"
+    model_list:
+      - model_show: text-embedding-ada-002
+        model_dim: 1536
+        model_mark: text_embedding_ada_002
+        model_ready: true
+        extra_args:
+          azure_deployment: text-embedding-ada-002-deploy
+  - model_type: xinference
+    model_args:
+      base_url: http://xinference.example.com
+    model_list:
+      - model_show: bge-large-zh-v1.5
+        model_dim: 1024
+        model_mark: bge_large_zh_v1_5
+        model_ready: false
+        extra_args:
+          model_uid: bge-large-zh-v1.5
+      - model_show: bce-embedding-base_v1
+        model_dim: 768
+        model_mark: bce_embedding_base_v1
+        model_ready: false
+        extra_args:
+          model_uid: bce-embedding-base_v1
+  - model_type: siliconflow
+    model_args:
+      base_url: https://api.siliconflow.cn/v1/embeddings
+      api_key: sk-example-apikey-code
+    model_list:
+      - model_show: bge-m3
+        model_dim: 1024
+        model_mark: bge_m3
+        model_ready: true
+        extra_args:
+          model: BAAI/bge-m3
+rerank_models:
+  - model_type: xinference
+    model_args:
+      base_url: http://xinference.example.com
+    model_list:
+      - model_show: bge-reranker-large
+        model_ready: false
+        extra_args:
+          model: bge-reranker-large
+      - model_show: bce-reranker-base_v1
+        model_ready: false
+        extra_args:
+          model: bce-reranker-base_v1
+  - model_type: siliconflow
+    model_args:
+      base_url: https://api.siliconflow.cn/v1/rerank
+      api_key: sk-example-apikey-code
+    model_list:
+      - model_show: bge-reranker-v2-m3
+        model_ready: true
+        extra_args:
+          model: BAAI/bge-reranker-v2-m3
+      - model_show: bce-reranker-base_v1
+        model_ready: true
+        extra_args:
+          model: netease-youdao/bce-reranker-base_v1
+corpus:
+prompts:
+  image_text_summary: |-
+    # System Prompt:
+
+    以下输入 `query_str` 包含从图片中提取的OCR文字内容及其坐标信息。您的任务是从文本中提取相关信息，并将其组织成结构化的格式。提取的信息应该清晰地呈现，并归类在特定的类别下。
+
+    # User Prompt:
+
+    根据提取的信息，请将其组织成清晰的类别。信息应按照以下格式呈现：
+
+    ---
+
+    **XXXX：**
+    * XX：xx
+    * XX：xx
+
+    **XXXX：**
+    * XX：xxx
+    * XX：xxx
+    ...
+
+    ---
+    ## 输出示例
+
+    **个人信息：**
+    * 姓名：xx
+    * 年龄：xx
+
+    **身体特征：**
+    * 身高：xxx
+    * 体重：xxx
+
+    ## 用户输入
+    {query_str}

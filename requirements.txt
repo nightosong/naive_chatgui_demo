@@ -1,0 +1,15 @@
+llama-index==0.11.23
+llama-index-embeddings-azure-openai==0.2.5
+llama-index-embeddings-siliconflow==0.1.1
+llama-index-embeddings-xinference==0.1.1
+llama-index-embeddings-zhipuai==0.1.0
+llama-index-llms-azure-openai==0.2.2
+llama-index-llms-ollama==0.3.6
+llama-index-llms-openai==0.2.16
+llama-index-llms-siliconflow==0.1.0
+llama-index-llms-zhipuai==0.1.1
+llama-index-postprocessor-siliconflow-rerank==0.1.0
+llama-index-postprocessor-xinference-rerank==0.1.0
+openpyxl==3.1.5
+paddleocr==2.9.1
+paddlepaddle==2.6.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
