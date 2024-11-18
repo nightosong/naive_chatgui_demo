@@ -36,6 +36,17 @@ class ExcelReader:
         workbook.save(xlsx_file)
 
     @staticmethod
+    def insert_cells(xlsx_file, rows, column, values, sheet_name=None):
+        workbook = openpyxl.load_workbook(xlsx_file)
+        if not sheet_name:
+            sheet = workbook.active
+        else:
+            sheet = workbook[sheet_name]
+        for row, value in zip(rows, values):
+            sheet.cell(row, column, value)
+        workbook.save(xlsx_file)
+
+    @staticmethod
     def load_sheet_data(xlsx_file) -> Dict[str, list]:
         workbook = openpyxl.load_workbook(xlsx_file)
         sheet_data = {}
@@ -61,3 +72,8 @@ def clear_excel():
     empty_df.to_excel("result.xlsx", index=False)
 
     print("Excel file has been cleared.")
+
+
+def temporary_save(save_file, row, title, value):
+    with open(save_file, "a", encoding="utf-8") as writer:
+        writer.write(f"@@SGD@@{row}@@{title}@@{value}@@SGD\n")

@@ -1,0 +1,8 @@
+en:
+  image-text-extraction: "Image Text Extraction"
+  image-text-extract-methods: "Extraction Methods"
+  image-text-extract-models: "Extraction Models"
+zh:
+  image-text-extraction: "图片文字提取"
+  image-text-extract-methods: "提取方式选择"
+  image-text-extract-models: "提取模型选择"

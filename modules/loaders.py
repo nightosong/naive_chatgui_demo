@@ -29,6 +29,7 @@ class SchemaLoader:
         self.status = None
         self.corpus = None
         self.chat_models = None
+        self.multi_modal_models = None
         self.embeddings = None
         self.vector_store = None
         self.storage = None

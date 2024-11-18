@@ -97,6 +97,41 @@ class LlamaChatModelManager:
             print("llm generator async error: ", err)
 
 
+class LlamaMultiModalManager:
+    _reference = {
+        "siliconflow": SiliconFlow,
+    }
+
+    def __init__(self, model_configs):
+        self._links: Dict[str, Tuple[Union[AzureOpenAI, Ollama], Dict]] = {}
+        self._configs = model_configs
+        self.link_models(model_configs)
+
+    def link_models(self, configs):
+        for config in configs:
+            model_type = config["model_type"].split("-")[0]
+            model_args = config["model_args"] or {}
+            model_cls = self._reference.get(model_type)
+            for model_cfg in config["model_list"]:
+                if not model_cfg["model_ready"]:
+                    continue
+                self._links[model_cfg["model_show"]] = [
+                    model_cls,
+                    dict(model_cfg["extra_args"] or {}, **model_args),
+                ]
+
+    def choices(self):
+        return list(self._links.keys())
+
+    def load(self, model_name=None, **kwargs) -> Union[AzureOpenAI, Ollama]:
+        if not model_name and self._links:
+            model_name = next(iter(self._links.keys()))
+        if model_name not in self._links:
+            raise ValueError(f"Invalid model name: {model_name}")
+        model_cls, model_args = self._links.get(model_name)
+        return model_cls(**model_args, **kwargs)
+
+
 class LlamaEmbeddingsManager:
     reference = {
         "azure": AzureOpenAIEmbedding,

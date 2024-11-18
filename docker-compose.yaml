@@ -1,0 +1,14 @@
+services:
+  model-ability:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: model-ability
+    volumes:
+      - /data/logs/model-ability:/app/logs
+    ports:
+      - "8046:8046"
+    restart: always
+    command: >
+      python3 main.py 

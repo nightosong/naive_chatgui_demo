@@ -1,72 +1,113 @@
-import aiohttp
-import asyncio
+import os
 import json
 import logging
-from tqdm import tqdm
-from modules.loaders import SchemaLoader
-from modules.models import LlamaChatModelManager, LLMType
-from modules.readers import read_image_text, ExcelReader
+import yaml
+import uvicorn
+import argparse
+import gradio as gr
+from pathlib import Path
+from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from routers.gui_chatbot import router
 
-schema = SchemaLoader("schema.yaml")
-logging.getLogger("ppocr").setLevel(level=logging.WARNING)
+
+app = FastAPI()
 
 
-async def fetch_image_text(image_url: str) -> str:
-    async with aiohttp.ClientSession() as session:
+@app.get("/actuator/health")
+async def health_check():
+    return {"status": "UP"}
+
+
+@app.get("/actuator")
+async def actuator():
+    return {"status": "Not Implemented"}
+
+
+class NoOptionsFilter(logging.Filter):
+    def filter(self, record):
+        """屏蔽/actuator/*类日志"""
+        if "OPTIONS" in record.getMessage():
+            return False
+        if "/actuator/" in record.getMessage():
+            return False
+        return True
+
+
+def check_filesystem_state(server_config: dict):
+    """检查系统的必要文件挂载"""
+    filesystem = server_config.get("mount") or []
+    for filepath in filesystem:
         try:
-            async with session.get(image_url, timeout=10) as response:
-                if response.status == 200:
-                    image_content = await response.read()
-                    return await asyncio.to_thread(read_image_text, image_content, True)
-        except Exception as e:
-            print(f"Error fetching image from {image_url}: {e}")
-    return ""
+            assert Path(filepath).exists(), f"{filepath} not exists!!!"
+        except AssertionError as err:
+            print(f"文件系统检测: {err}")
+    os.environ["TIKTOKEN_CACHE_DIR"] = ".cache"
 
 
-async def process_row(data: list, llm: LLMType, row: int, save_file: str):
-    try:
-        image_url = json.loads(data[5])[0]
-        image_text = await fetch_image_text(image_url)
-        image_prompt = schema.prompts.image_text_summary.format(query_str=image_text)
-        response = await llm.acomplete(image_prompt)
+def load_config_settings(env, service_name):
+    os.environ["env"] = env
+    config_path = "./configs/service.yaml"
+    with open(config_path, "r", encoding="utf-8") as file:
+        server_config = yaml.safe_load(file).get(service_name)
+        os.environ["service_name"] = service_name
+        try:
+            assert server_config is not None, f"config {service_name} cant be empty!!!"
+        except AssertionError as err:
+            print(f"配置检测: {err}")
+    return server_config
 
-        asyncio.to_thread(ExcelReader.insert_cell, save_file, row, 7, response.text)
 
-    except Exception as e:
-        print(f"Error processing row {row} with data {data}: {e}")
+def load_worker_from_config():
+    """动态加载配置服务及路由"""
+    gr.mount_gradio_app(app, router, "")
 
 
-async def load_excel_analysis(
-    load_file: str, save_file: str, batch_size=100, max_concurrency=10
-):
-    llm_mgr = LlamaChatModelManager(schema.chat_models)
-    llm = llm_mgr.load()
+def set_logging_restriction():
+    logging.getLogger().setLevel(logging.WARNING)
+    restrict_items = ["apscheduler.executors", "apscheduler.scheduler", "nacos.client"]
+    for log_item in restrict_items:
+        logging.getLogger(log_item).setLevel(logging.CRITICAL)
+    logging.getLogger("uvicorn.access").addFilter(NoOptionsFilter())
 
-    generator = ExcelReader.load_data_by_row(load_file)
-    semaphore = asyncio.Semaphore(max_concurrency)
 
-    row = 2
-    batch = []
+def set_app_corsmiddleware(server_config: dict):
+    """跨域设置"""
+    origins = server_config.get("origins") or ["*"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
 
-    async def process_batch(batch_data, start_row):
-        nonlocal row
-        tasks = []
-        async with semaphore:
-            for data in batch_data:
-                tasks.append(process_row(data, llm, start_row, save_file))
-                start_row += 1
-        await asyncio.gather(*tasks)
 
-    for data in tqdm(generator, miniters=10):
-        batch.append(data)
-        if len(batch) >= batch_size:
-            await process_batch(batch, row)
-            batch = []
-            row += batch_size
+def set_app_exception_handlers():
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
+        """捕捉422报错并进行自定义处理"""
+        error_json = await request.json()
+        print("[422 Unprocessable Entity]: %s", json.dumps(error_json))
+        return JSONResponse(
+            status_code=422,
+            content={"detail": jsonable_encoder(exc.errors())},
+        )
 
-    if batch:
-        await process_batch(batch, row)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 if __name__ == "__main__":
-    asyncio.run(load_excel_analysis("product.xlsx", "results.xlsx"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", type=str, required=False, help="environment name.")
+    parser.add_argument("--address", type=str, default="0.0.0.0", help="server address")
+    parser.add_argument("--port", type=str, default="8046", help="server port")
+    args = parser.parse_args()
+    set_logging_restriction()
+    load_worker_from_config()
+    uvicorn.run(app, host=args.address, port=int(args.port))

@@ -1,3 +1,5 @@
+fastapi
+gradio==5.5.0
 llama-index==0.11.23
 llama-index-embeddings-azure-openai==0.2.5
 llama-index-embeddings-siliconflow==0.1.1
